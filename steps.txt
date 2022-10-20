@@ -130,26 +130,251 @@
     4. Chakra Tour
 
         chakra-ui.com/docs/components
-        
+
 -------------------------------------------------------------------------
 
 18. CHAKRA UI
 
-
     1. Header
+
+    npm i react-icons
+    default theme chakra page
+    rem is based on the body font-size 
+        if fs is 16px 1rem is 16px
+
+    icons are not chakra components, so need to be enclosed with a chakra box
+    to change color
+
+    Root.tsx>
+        import { Box, Button, HStack } from '@chakra-ui/react';
+        import { FaAirbnb } from 'react-icons/fa';
+        import { Outlet } from 'react-router-dom';
+
+        function Root() {
+        return (
+            <Box>
+            <HStack py={"5"} px={10} borderBottomWidth={1}
+                justifyContent="space-between">
+                <Box color={"red.500"}>
+                <FaAirbnb size={48} />
+                </Box>
+                <HStack spacing={"2rem"}>
+                <Button>Login</Button>
+                <Button colorScheme={"red"}>Signup</Button>
+                </HStack>
+            </HStack>
+            <Outlet />
+            </Box>
+        )
+        }
+
+        export default Root
 
     2. Login Modal
 
+        <Modal isOpen={isOpen} onClose={onClose}>
+            <ModalOverlay />
+            <ModalContent>
+                <ModalHeader>Login</ModalHeader>
+                <ModalCloseButton />
+                <ModalBody>
+                <VStack>
+                    <InputGroup>
+                    <InputLeftElement children={
+                        <Box color={"gray.500"}>
+                        <FaUserNinja />
+                        </Box>} />
+                    <Input
+                        placeholder='Username'
+                        variant={"filled"} />
+                    </InputGroup>
+                    <InputGroup>
+                    <InputLeftElement children={
+                        <Box color={"gray.500"}>
+                        <FaLock />
+                        </Box>} />
+                    <Input
+                        placeholder='Password'
+                        variant={"filled"} />
+                    </InputGroup>
+                </VStack>
+
+                </ModalBody>
+                <ModalFooter>
+                <Button colorScheme={"red"} w={"100%"}>Login</Button>
+                </ModalFooter>
+            </ModalContent>
+
+            </Modal>
+
     3. Signup Modal
+
+        Separate Compontents>
+            Header.tsx
+                SocialLogin.tsx
+                    LoginModal.tsx
+                    SignupModal.tsx
+
+        use useDisclosure to control each Modal
+            renaming isOpen, onOpen, onClose using :
+                eg. isOpen:isLoginOpen
 
     4. Dark Mode
 
+        src>theme.ts
+            import { extendTheme, type ThemeConfig } from "@chakra-ui/react";
+
+            const config: ThemeConfig = {
+                initialColorMode: "light",
+                useSystemColorMode: false,
+            }
+
+            const theme = extendTheme({ config })
+            export default theme;
+
+        index.tsx > pass theme to ChakraProvider
+            import { ChakraProvider, ColorModeScript } from "@chakra-ui/react"
+            import theme from "./theme"
+
+            <ChakraProvider theme={theme}>
+                <ColorModeScript initialColorMode={theme.config.initialColorMode} />
+
+            ...
+        
+            ctrl + shift + j > application > local storage > delete key & restart server
+            updates based on theme.js theme (light, dark)
+
+        Header >
+            const { colorMode, toggleColorMode } = useColorMode();
+
+            <IconButton
+                onClick={toggleColorMode}
+                variant={"ghost"}
+                aria-label='Toggle Dark Mode'
+                icon={colorMode === "light" ? <FaMoon /> : <FaSun />} />
+
+        ^ long way
+        > short way > [useColorModeValue(varforlight, varfordark)]
+            const colorToggleICon = useColorModeValue(<FaMoon />, <FaSun />)
+                
+                ...
+                icon={colorToggleICon} />
+
+
+        Wrap components in LightMode or DarkMode to force stylings for that Mode 
+            regardless of current Mode
+                <LightMode>
+                    <Button colorScheme={"red"}
+                        onClick={onSignupOpen}
+                    >Signup</Button>
+                </LightMode>
+
+        Animation >
+            Wrap component to animate (iconbutton) with AnimatorPresence & motion.div
+            with exitBeforeEnter & initial={false}
+
+            import { AnimatePresence, motion } from 'framer-motion';
+
+                <AnimatePresence exitBeforeEnter initial={false}>
+                    <motion.div
+                        style={{ display: 'inline-block' }}
+                        key={useColorModeValue('light', 'dark')}
+                        initial={{ y: -20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: 20, opacity: 0 }}
+                        transition={{ duration: 0.1 }}
+                    >
+                        COMPONENT
+                    </motion.div>
+                </AnimatePresence> 
+
     5. Rooms Grid
+
+        Home >
+            Create Grid component with boxes inside 
+<Grid
+            columnGap={4}
+            rowGap={8}
+            templateColumns={{
+                sm: "1fr",
+                md: "1fr 1fr",
+                lg: "repeat(3, 1fr)",
+                xl: "repeat(4, 1fr)",
+                "2xl": "repeat(4, 1fr)",
+            }}
+            px={{
+                sm: 10,
+                lg: 40,
+            }}
+            mt={10}
+        ><Boxes......></Grid>
 
     6. Responsive Design
 
+            templateColumns={{
+                sm: "1fr",
+                md: "1fr 1fr",
+                lg: "repeat(2, 1fr)",
+                xl: "repeat(3, 1fr)",
+                "2xl": "repeat(4, 1fr)",
+            }}
+
+            fix heading from hstack to stack to control direction depending on screen size>
+                <Stack py={5}
+                px={{
+                    base: 10,
+                    lg: 40,
+                }}
+                alignItems="center"
+                spacing={{
+                    sm: 4,
+                    md: 0,
+                }}
+                borderBottomWidth={1}
+                justifyContent={"space-between"}
+                direction={{
+                    sm: "column",
+                    md: "row",
+                }}>
+
+
+      Add custom breakpoints to theme.ts
+      const breakpoints = {
+            sm: '320px',
+            md: '768px',
+            lg: '960px',
+            xl: '1200px',
+            '2xl': '1536',
+            '3xl': '1800',
+            '4xl': '2266',
+            '5xl': '2655',
+        }          
+    const theme = extendTheme({ config, breakpoints })
+
+
     7. Skeletons
 
+        import { Box, HStack, Skeleton, SkeletonCircle, SkeletonText, Spacer } from "@chakra-ui/react"
+
+        function SkeletonRoom() {
+            return (
+                <Box>
+                    <Skeleton height={{ sm: 315, lg: 290 }} rounded="3xl" mb={3} />
+                    <HStack mb={-0.5} w={"100%"}>
+                        <SkeletonText noOfLines={1} w={"70%"} />
+                        <Spacer />
+                        <SkeletonCircle py={1} px={7} />
+                    </HStack>
+                    <SkeletonText noOfLines={1} w={"50%"} mb={3} />
+                    <SkeletonText noOfLines={1} w={"25%"} mt={4} />
+                </Box>
+            )
+        }
+
+        export default SkeletonRoom
+
+
+    _hover={{color:"red}}
 
 -------------------------------------------------------------------------
 
