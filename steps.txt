@@ -1,0 +1,298 @@
+17. FRONT-END SETUP
+
+    1. Setup
+
+        NOPE
+            npx create-react-app airbnb-react --template=typescript
+            npm i @chakra-ui/react @emotion/react @emotion/styled framer-motion
+
+        USE THIS INSTEAD
+            npx create-react-app my-app --template @chakra-ui/typescript
+
+        cd airbnb-react && code .
+        
+        src > DELETE
+            only apptsx, indextsx, react-app-env left
+
+        index >
+            DEL import reportWebVitals from './reportWebVitals';
+                import './index.css';
+                reportWebVitals()
+
+        app >
+            DEL import logo from './logo.svg';
+                import './App.css';
+                return only <div/>
+
+        npm i react-router-dom
+
+        index >
+            surrond app with ChakraProvider
+
+        >npm run start
+
+        app > 
+            <Text fontSize={"2xl"} color={"red.600"}>
+            hi
+            </Text>
+
+    2. Router Setup
+
+    Root acts as the base URL for website styles
+    Outlet allows a specific page to be rendered depending on the route
+
+        src > components.Root.tsx >
+            (rfce)
+            import { Outlet } from 'react-router-dom';
+
+            function Root() {
+            return (
+                <div>
+                    Root
+                    <Outlet />
+                </div>
+            )
+            }
+
+            export default Root
+
+    This is done in router.tsx, where a router variable referencing Root
+    as the element, and various routes as the children is created. But first,
+    some things need to change.
+        
+        DELETE APP.tsx
+        index >
+            replace <App/> with <RouterProvider/>
+            replace import { App } from "./App"
+                with import { RouterProvider } from "react-router-dom"
+
+    Now create a routes folder and rfce 2 testing routes (Home.tsx & Users.tsx)
+    Then create the router.
+
+        src > router.tsx >
+            import { createBrowserRouter } from 'react-router-dom';
+            import Root from './components/Root';
+
+            const router = createBrowserRouter([{
+                path: "/",
+                element: <Root />,
+                children: [
+                    {
+                        path: "",
+                        element: <Home />
+                    },
+                    {
+                        path: "users",
+                        element: <Users />
+                    }
+                ]
+            }]);
+
+            export default router;
+
+    Navigating to each route (http://localhost:3000/ & http://localhost:3000/users)
+    the text is different
+
+    3. Not Found page
+
+    DELETE USers.tsx
+    create NotFound.tsx in routes
+    add to router, before children variable and after path variable as errorElement
+        errorElement: <NotFound />,
+    navigate to non-existent page - works
+
+    NotFound
+        import { Button, Heading, Text, VStack } from '@chakra-ui/react'
+        import { Link } from 'react-router-dom';
+        function NotFound() {
+            return (
+                <VStack
+                    justifyContent={"center"}
+                    minH="100vh"
+                    background={"gray.100"}
+                >
+                    <Heading>Page not found.</Heading>
+                    <Text>It seems you are lost</Text>
+                    <Link to='/'>
+                        <Button
+                            variant={"link"}
+                            // ghost, solid, link, outline
+                            colorScheme={"twitter"}
+                        // twitter, red
+                        >Go home &rarr;</Button>
+                    </Link>
+                </VStack>
+            );
+        }
+
+        export default NotFound
+
+    4. Chakra Tour
+
+        chakra-ui.com/docs/components
+        
+-------------------------------------------------------------------------
+
+18. CHAKRA UI
+
+
+    1. Header
+
+    2. Login Modal
+
+    3. Signup Modal
+
+    4. Dark Mode
+
+    5. Rooms Grid
+
+    6. Responsive Design
+
+    7. Skeletons
+
+
+-------------------------------------------------------------------------
+
+19. REACT QUERY / TANSTACK QUERY
+
+
+    1. Manual Fetching
+    
+    2. Recap
+
+    3. React Query / Tanstack
+
+    4. Axios
+
+    5. Room Detail
+
+    6. Devtools and Query Keys
+
+    7. Photos Grid
+
+    8. Reviews
+
+    9. Conclusion
+
+-------------------------------------------------------------------------
+
+20. AUTHENTICATION (FRONTEND)
+
+    1. useUser
+
+
+    2. Credentials
+
+
+
+        2b RECAP
+
+    3. Log Out
+
+
+    4. CSRF
+
+
+    5. Github Login
+
+
+    6. Github Code
+
+
+    7. Access Token
+
+
+    8. Emails
+
+
+    9. Kakao Talk App
+
+
+    10. Kakao Talk Auth
+
+
+    11. Kakao Login
+
+
+    12. Login Form
+
+
+    13. React Hook Form
+
+
+    14. useMutation
+
+
+    15. Recap & Code Challenge 
+
+-------------------------------------------------------------------------
+
+21. UPLOAD ROOM
+
+    1. Protected Pages
+
+
+    2. Upload Form
+
+
+    3. Dynamic Form
+
+
+    4. register
+
+
+    5. Bugfix
+
+
+    6. Upload Form
+
+
+    7. One-Time Upload
+
+
+    8. File Upload
+
+
+    9. Final Mutation
+
+
+    10. Recap
+
+-------------------------------------------------------------------------
+
+22. CALENDAR
+
+
+    1. Calendar Component
+
+
+    2. Booking Dates
+
+
+    3. Checking Dates
+
+
+    4. Timezones
+
+
+    5. Code Challenge
+
+-------------------------------------------------------------------------
+
+23. DEPLOYMENT
+
+    1. Render Blueprint
+
+
+    2. Sentry
+
+
+    3. Custom Domain
+
+
+    4. Rewrites
+
+
+    5. Conclusions
+
+-------------------------------------------------------------------------
