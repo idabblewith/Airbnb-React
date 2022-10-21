@@ -1,8 +1,7 @@
-import { Box, Button, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
-import { FaAirbnb, FaMoon, FaSun } from 'react-icons/fa';
+import { Box } from '@chakra-ui/react';
 import { Outlet } from 'react-router-dom';
 import Header from './Header';
-import LoginModal from './LoginModal';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
 function Root() {
 
@@ -10,6 +9,7 @@ function Root() {
     <Box>
       <Header />
       <Outlet />
+      <ReactQueryDevtools />
     </Box>
   )
 }

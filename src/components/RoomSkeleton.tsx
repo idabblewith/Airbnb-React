@@ -1,6 +1,6 @@
 import { Box, HStack, Skeleton, SkeletonCircle, SkeletonText, Spacer } from "@chakra-ui/react"
 
-function SkeletonRoom() {
+function RoomSkeleton() {
     return (
         <Box>
             <Skeleton height={{ sm: 315, lg: 290, xl: 380 }} rounded="3xl" mb={3} minW={280} />
@@ -15,4 +15,4 @@ function SkeletonRoom() {
     )
 }
 
-export default SkeletonRoom
+export default RoomSkeleton

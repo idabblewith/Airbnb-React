@@ -380,24 +380,368 @@
 
 19. REACT QUERY / TANSTACK QUERY
 
-
     1. Manual Fetching
-    
+
+        Trying 
+            useEffect(() => {
+                fetch("http://127.0.0.1:8000/api/v1/rooms/");
+            }, [])
+
+        Will result in a CORS Error
+            if django-cors-headers not installed and configured
+                
+                BACKEND
+                poetry add django-cors-headers
+                
+                THIRD_PARTY_APPS = [... "corsheaders", ...]
+                MIDDLEWARE = [..., "corsheaders.middleware.CorsMiddleware",]
+                CORS_ALLOWED_ORIGINS = ["http://localhost:3000",]
+
+
+        NOT RECOMENDED FOR LARGER APPS
+            Testing isLoading with fetchRooms hook >
+
+                const [isLoading, setIsLoading] = useState(true);
+                const [rooms, setRooms] = useState();
+                const fetchRooms = async () => {
+                    const res = await fetch("http://127.0.0.1:8000/api/v1/rooms/");
+                    const json = await res.json();
+                    setRooms(json);
+                    setIsLoading(false);
+                }
+                useEffect(() => {
+                    fetchRooms();
+                }, [])
+
+                ...
+
+                {isLoading ? (
+                    <>
+                        <RoomSkeleton />
+                        <RoomSkeleton />
+                    </>
+                ) : <Room />}
+
+        RECOMMENDED FOR LARGER APPS (REACT/TANSTACK QUERY) SEE 3
+
+
     2. Recap
+        Room
+            interface IRoomProps {
+                name: string;
+                imageURL: string;
+                city: string;
+                country: string;
+                price: number;
+                rating: number;
+            }
+
+            function Room({ name, imageURL, rating, city, country, price }: IRoomProps) {
+
+        Home
+
+            interface IPhoto {
+                pk: string;
+                file: string;
+                description: string;
+            }
+
+            interface IRoom {
+                pk: number;
+                name: string;
+                city: string;
+                country: string;
+                price: number;
+                is_owner: boolean;
+                rating: number;
+                photos: IPhoto[];
+            }
+
+            function Home() {
+                const [isLoading, setIsLoading] = useState(true);
+                const [rooms, setRooms] = useState<IRoom[]>([]);
+                ...
+                ...
+                {rooms.map(room =>
+                    <Room
+                        key={room.pk}
+                        name={room.name}
+                        price={room.price}
+                        rating={room.rating}
+                        city={room.city}
+                        country={room.country}
+                        imageURL={
+                            room.photos[0] == undefined ?
+                                "https://a0.muscache.com/im/pictures/c2da931b-1f28-434c-8f99-d82f816a2ec6.jpg?im_w=720" :
+                                room.photos[0].file == undefined ?
+                                    "data:image/jpeg;base64,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" :
+                                    room.photos[0].file
+                        }
 
     3. React Query / Tanstack
 
+        Assists by not refetching already present data through caching
+
+        npm i @tanstack/react-query
+
+        index >
+            import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
+
+            const client = new QueryClient();
+            root.render(
+            <React.StrictMode>
+                <QueryClientProvider client={client}>
+                <ChakraProvider theme={theme}>
+                    <ColorModeScript initialColorMode={theme.config.initialColorMode} />
+                    <RouterProvider router={router} />
+                </ChakraProvider>
+                </QueryClientProvider>
+            </React.StrictMode>,
+            )
+
+
+        api.ts >
+            const BASE_URL = "http://127.0.0.1:8000/api/v1"
+
+            export const getRooms = async () => {
+                const res = await fetch(`${BASE_URL}/rooms/`);
+                const json = await res.json();
+                return json;
+            }
+
+        Home >
+            DEL ALL CODE ABOVE RETURN AND BELOW Home
+            REPLACE WITH
+            const {isLoading, data} = useQuery<IRoom[]>(["rooms"], getRooms);
+
+            ....
+            {data?.map(room =>
+            ...
+
     4. Axios
+
+        npm i axios
+        Adapter on top of fetch
+
+        api >
+            GUT
+            import axios from "axios";
+
+            const instance = axios.create({
+                baseURL: "http://127.0.0.1:8000/api/v1/",
+            });
+
+            export const getRooms = () => instance.get("rooms/").then(res => res.data);
 
     5. Room Detail
 
+        Home > 
+            add pk to room mapping
+            add pk to IRoom
+
+        Room >
+            add pk to IRoomProps and props for Room
+
+        routes > RoomDetail rfce
+            import { useParams } from "react-router-dom";
+            import { useQuery } from "@tanstack/react-query";
+            import { getRoomDetail } from "../api";
+
+            function RoomDetail() {
+                const { roomPk } = useParams();
+                const { isLoading, data } = useQuery([`room:${roomPk}`], getRoomDetail)
+                console.log(data);
+                return (
+                    <div>RoomDetail</div>
+                )
+            }
+
+            export default RoomDetail
+
+        router >
+            children = [
+                ...
+                {
+                    path:"rooms/:roomPk",
+                    element:<RoomDetail/>,
+                },
+            ]
+
+        backend > roomdetaiserializer > get_is_liked:
+            if req.user.is_authenticated:
+                ..code..
+            return False
+
     6. Devtools and Query Keys
+
+        REPLACES CONSOLE.LOG at bottom of page (left corner)
+
+        npm i @tanstack/react-query-devtools 
+
+        Add to Root below Outlet
+            import {ReactQueryDevtools} from '@tanstack/react-query-devtools';
+            ...
+                <ReactQueryDevtools />
+
+        api >
+            import { QueryFunctionContext } from '@tanstack/react-query';
+            
+            ...
+
+            export const getRoomDetail = ({ queryKey }: QueryFunctionContext) => {
+                const [_, roomPk] = queryKey;
+                return instance.get(`rooms/${roomPk}`).then(res => res.data);
+            }
+
+        RoomDetail >
+            import { getRoomDetail } from "../api";
+
+            function RoomDetail() {
+                const { roomPk } = useParams();
+                const { isLoading, data } = useQuery([`room`, roomPk], getRoomDetail)
+                console.log(data);
+                return (
+                    <div>RoomDetail</div>
+                )
+            }
 
     7. Photos Grid
 
-    8. Reviews
+        CREATE A TYPE DECLARATION FILE
+        src > types.d.ts
+            export interface IRoomPhotoPhoto {
+                pk: string;
+                file: string;
+                description: string;
+            }
 
-    9. Conclusion
+            export interface IRoomList {
+                pk: number;
+                name: string;
+                country: string;
+                city: string;
+                price: number;
+                rating: number;
+                is_owner: boolean;
+                photos: IRoomPhotoPhoto[];
+            }
+
+            export interface IRoomOwner {
+                name: string;
+                avatar: string;
+                username: string;
+            }
+
+            export interface IAmenity {
+                name: string;
+                description: string;
+            }
+
+            export interface IRoomDetail extends IRoomList {
+                created_at: string;
+                updated_at: string;
+                rooms: number;
+                toilets: number;
+                description: string;
+                address: string;
+                pet_friendly: true;
+                kind: string;
+                is_owner: boolean;
+                is_liked: boolean;
+                category: {
+                    name: string;
+                    kind: string;
+                };
+                owner: IRoomOwner;
+                amenities: IAmenity[];
+            }
+
+        DELETE Interfaces and
+        REPLACE IROOM with IROOMLIST and autoimport from above file
+        in Home.tsx >
+            ...
+            const { isLoading, data } = useQuery<IRoomList[]>(["rooms"], getRooms);
+            ...
+
+        GridItem instead of Box inside of Grid to customise columnSpan, rowSpan
+        Image objectFit={"cover"}
+
+    8. Reviews & Conclusion
+
+        types.d.ts >
+            export interface IReview {
+                payload: string;
+                rating: number;
+                user: IRoomOwner;
+            }
+
+        api >
+            export const getRoomReviews = ({ queryKey }: QueryFunctionContext) => {
+                const [_, roomPk] = queryKey;
+                return instance.get(`rooms/${roomPk}/reviews`).then(res => res.data);
+            }
+
+        RoomDetail >
+            ...
+                <HStack mt={10} w={"40%"} justifyContent={"space-between"}>
+                    <VStack alignItems={"flex-start"}>
+                        <Skeleton isLoaded={!isLoading} h={"30px"}>
+                            <Heading fontSize={'2xl'}>
+                                House hosted by {data?.owner.username}
+                            </Heading>
+                        </Skeleton>
+                        <Skeleton isLoaded={!isLoading} h={"30px"}>
+                            <HStack justifyContent={"flex-start"} w={"100%"} >
+                                <Text>{data?.toilets} toilet{data?.toilets == 1 ? "" : "s"}</Text>
+                                <Text>|</Text>
+                                <Text>{data?.rooms} room{data?.rooms == 1 ? "" : "s"}</Text>
+                            </HStack>
+                        </Skeleton>
+
+                    </VStack>
+                    <SkeletonCircle isLoaded={!isLoading} h="95px" w="95px">
+                        <Avatar size={'xl'}
+                            name={data?.owner.username}
+                            src={data?.owner.profile_photo} />
+                    </SkeletonCircle>
+
+                </HStack>
+                <Box mt={10}>
+                    <Heading fontSize={'2xl'} mb={5}>
+                        <Skeleton w={'40%'} isLoaded={!isLoading}>
+                            <HStack>
+                                <FaStar />
+                                <Text>{data?.rating}</Text>
+                                <Text fontSize={18}>|</Text>
+                                <Text>{reviewsData?.length} review{reviewsData?.length === 1 ? "" : "s"}</Text>
+                            </HStack>
+                        </Skeleton>
+                    </Heading>
+                    <Container mx={"none"} maxW="container.lg" mt={35}>
+                        <Grid templateColumns={"1fr 1fr"} gap={10}>
+                            {reviewsData?.map((review, index) => (
+                                <VStack key={index} alignItems={"flex-start"} spacing={0}>
+                                    <HStack >
+                                        <Avatar name={review.user.name}
+                                            src={review.user.profile_photo}
+                                            size={'md'}
+                                        />
+                                        <VStack alignItems={"flex-start"}>
+                                            <Heading fontSize={'md'}>{review.user.username}</Heading>
+                                            <HStack spacing={1}>
+                                                <FaStar size={'12px'} />
+                                                <Text>{review.rating}</Text>
+                                            </HStack>
+                                        </VStack>
+                                    </HStack>
+                                    <Text>{review.payload}</Text>
+
+                                </VStack>
+                            ))}
+                        </Grid>
+                    </Container>
+
+                </Box>
 
 -------------------------------------------------------------------------
 
