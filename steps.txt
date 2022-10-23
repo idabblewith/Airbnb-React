@@ -749,50 +749,718 @@
 
     1. useUser
 
+        Make header aware of authentication status (login | sign up if out, avatar if in)
+
+        api >
+            export const getMe = () => instance.get(`users/me`).then((response) => response.data);
+
+        src.lib.useUser >
+            import { useQuery } from "@tanstack/react-query";
+            import { getMe } from "../api";
+
+            export default function useUser() {
+                const { isLoading, data, isError } = useQuery(["me"], getMe);
+                return {
+                    userLoading: isLoading,
+                    userData: data,
+                    isLoggedIn: !isError,
+                }
+            }
+
+        tanstackquery will try multiple times on errors to get data before letting it fail
+        this will cause buttons below to not show for a few secs(even when not logged in)
+        This can be fixed by creating a config object in the usUser hook
+
+        FROM THIS : 
+            const { isLoading, data, isError } = useQuery(["me"], getMe);
+        
+        TO THIS:
+            const { isLoading, data, isError } = useQuery(["me"], getMe, {
+                retry: false,
+            });
+        
+        Header >
+
+            {!userLoading ? (
+                !isLoggedIn ?
+                    <>
+                        <Button
+                            onClick={onLoginOpen}
+                        >
+                            Login
+                        </Button>
+                        <LightMode>
+                            <Button colorScheme={"red"}
+                                onClick={onSignupOpen}
+                            >
+                                Signup
+                            </Button>
+                        </LightMode></> :
+                    <Avatar size={'md'} />
+            ) : null}
+
 
     2. Credentials
 
+        Even if logged into Django admin panel, you will not be logged in on frontend
+        This is due to cookies not being sent from the correct origin
+
+        (localhost vs 127.0.0.1) 
+        change to 127 in django 
+
+            CORS_ALLOWED_ORIGINS = [
+                "http://127.0.0.1:3000",
+            ]
+
+        also cookies are not sent by default by js, so we need to include them in
+        axios instance 
+        api >
+            const instance = axios.create({
+                baseURL: "http://127.0.0.1:8000/api/v1/",
+                withCredentials: true,
+            });
+
+        however, django isnt prepared to receive these credentials, so we have to 
+        enable it in settings >
+            CORS_ALLOW_CREDENTIALS = True
+
+        Header >
+            ...
+                <Avatar name={userData?.username} size={'md'} src={userData?.profile_photo} />
+            ) : null}
 
 
-        2b RECAP
+        types >
+            export interface IUser {
+                last_login: string;
+                username: string;
+                email: string;
+                date_joined: string;
+                profile_photo: string;
+                name: string;
+                is_host: boolean;
+                gender: string;
+                language: string;
+                currency: string;
+            }
+
+        lib.useUser >
+            ...
+            import { IUser } from "../types";
+
+            export default function useUser() {
+            const { isLoading, data, isError } = useQuery<IUser>(["me"], getMe, {
+                retry: false,
+            });
+            ...
 
     3. Log Out
+
+        Change Header Avatar section >
+            <Menu>
+                <MenuButton>
+                    <Avatar name={userData?.username} size={'md'} src={userData?.profile_photo} />
+                </MenuButton>
+                <MenuList>
+                    <MenuItem onClick={onLogOut}>Logout</MenuItem>
+                </MenuList>
+            </Menu>
+
+        api >
+            export const logOut = () => instance.post(`users/log-out`).then(res => res.data);
+
+        Add to Header > 
+            ...
+            const onLogOut = async () => {
+                const data = await logOut();
+                console.log(data);
+            }
+            ...
+
+
+        Toasts 
+
+        Header >
+            const toast = useToast();
+            const onLogOut = async () => {
+                const toastID = toast({
+                    title: "Logging Out...",
+                    description: "Goodbye :(",
+                    status: "loading",
+                    position: 'bottom-right'
+                    // error, loading, info
+                    // can also change color
+                });
+                // const data = await logOut();
+                // console.log(data);
+                setTimeout(() => {
+                    toast.update(toastID, {
+                        status: "success",
+                        title: "Logged Out",
+                        description: "Come back soon!",
+                        duration: 2000
+                    });
+                }, 5000)
+            }
 
 
     4. CSRF
 
+        Django Settings >
+            CSRF_TRUSTED_ORIGINS = ["http://127.0.0.1:3000"]
+
+        Implement CSRF Token in headers of request (axios)
+            npm i js-cookie
+            npm i --save-dev @types/js-cookie
+        
+            api > 
+                import Cookie from 'js-cookie';
+                export const logOut = () => instance.post(`users/log-out`, null, {
+                    headers: {
+                        "X-CSRFToken": Cookie.get("csrftoken") || "",
+                    }
+                }).then(res => res.data);
+
+        Works now,
+        Ensure prof pic updates with query client
+        Header >
+            const toast = useToast();
+            const queryClient = useQueryClient();
+            const onLogOut = async () => {
+                const toastID = toast({
+                    title: "Logging Out...",
+                    description: "Goodbye :(",
+                    status: "loading",
+                    position: 'bottom-right'
+                    // error, loading, info
+                    // can also change color
+                });
+                await logOut();
+                queryClient.refetchQueries(['me']);
+                setTimeout(() => {
+                    toast.update(toastID, {
+                        status: "success",
+                        title: "Logged Out",
+                        description: "Come back soon!",
+                        duration: 2000
+                    });
+                }, 500)
+            }
 
     5. Github Login
 
+        OAuth
+            User >>> Github >>> Displayed with Requesting info, if accepted >>>
+            Our Website/confirm-gh?token=nj12i3bi >>> 
+            Take Token >>> Django API >>> send GH token to Github API 
+            >>> Receive information
+
+            https://github.com/settings/applications/new > CREATE
+            Note down Client ID & use in href of gh login with params of data u want
+
+        SocialLogin
+            <Button
+                href='https://github.com/login/oauth/authorize?client_id=0fbb1ad5fb0e65e0fbde&scope=read:user,user:email'
+                w={"100%"}
+                as="a"
+                leftIcon={<FaGithub />}
+            >
+                Continue with Github
+            </Button>
 
     6. Github Code
 
+        routes > GithubConfirm.tsx >
+            import { Button, Heading, Spinner, Text, VStack } from '@chakra-ui/react'
+            import { useEffect } from 'react';
+            import { Link, useLocation } from 'react-router-dom';
+            import { githubLogin } from '../api';
+
+            export default function GithubConfirm() {
+                const { search } = useLocation();
+                const confirmLogin = async () => {
+                    const params = new URLSearchParams(search);
+                    const code = params.get("code");
+                    if (code) {
+                        await githubLogin(code);
+                    }
+                }
+                useEffect(() => {
+                    confirmLogin();
+                }, []);
+                return (
+                    <VStack
+                        justifyContent={"center"}
+                        mt={40}
+                    >
+                        <Heading>Logging In...</Heading>
+                        <Text>Please wait a moment.</Text>
+                        <Spinner size={'lg'} />
+                    </VStack>
+                );
+            }
+
+
+        router >
+            {
+                path: "social",
+                children: [
+                    {
+                        path: "github",
+                        element: <GithubConfirm />,
+                    }
+                ],
+            },
+
+        api > 
+
+
+        Django.user.urls > 
+            path("github", views.GithubLogin.as_view()),
+
+        users.views > 
+            class GithubLogin(APIView):
+                def post(self, req):
+                    code = req.data.get("code")
+                    print(code)
+                    return Response()
 
     7. Access Token
 
 
+        Django >
+            poetry add requests
+        
+        users.views > 
+            class GithubLogin(APIView):
+                def post(self, req):
+                    code = req.data.get("code")
+                    access_token = requests.post(
+                        f"https://github.com/login/oauth/access_token?code={code}&client_id=b99860fd6028f1114333&client_secret={settings.GH_SECRET}",
+                        headers={"Accept": "application/json"},
+                    )
+                    access_token = access_token.json().get("access_token")
+                    user_data = requests.get(
+                        "https://api.github.com/user",
+                        headers={
+                            "Authorization": f"Bearer {access_token}",
+                            "Accept": "application/json",
+                        },
+                    )
+                    user_data = user_data.json()
+                    return Response()
+
+
     8. Emails
 
+        Add to above before return >
+            class GithubLogin(APIView):
+                def post(self, req):
+                    try:
+                        code = req.data.get("code")
+                        access_token = requests.post(
+                            f"https://github.com/login/oauth/access_token?code={code}&client_id=b99860fd6028f1114333&client_secret={settings.GH_SECRET}",
+                            headers={"Accept": "application/json"},
+                        )
+                        access_token = access_token.json().get("access_token")
+                        user_data = requests.get(
+                            "https://api.github.com/user",
+                            headers={
+                                "Authorization": f"Bearer {access_token}",
+                                "Accept": "application/json",
+                            },
+                        )
+                        user_data = user_data.json()
+                        user_emails = requests.get(
+                            "https://api.github.com/user/emails",
+                            headers={
+                                "Authorization": f"Bearer {access_token}",
+                                "Accept": "application/json",
+                            },
+                        )
+                        user_emails = user_emails.json()
+                        try:
+                            user = User.objects.get(email=user_emails[0]["email"])
+                            login(req, user)
+                            return Response(status=HTTP_200_OK)
+                        except User.DoesNotExist:
+                            user = User.objects.create(
+                                username=user_data.get("login"),
+                                email=user_emails[0]["email"],
+                                name=user_data.get("login"),
+                                profile_photo=user_data.get("avatar_url"),
+                            )
+                            user.set_unusable_password()
+                            # .has_usable_password() if not social login
+                            user.save()
+                            login(req, user)
+                            return Response(status=HTTP_200_OK)
+                    except Exception as e:
+                        print(e)
+                        return Response(
+                            status=HTTP_400_BAD_REQUEST,
+                        )
 
-    9. Kakao Talk App
+
+        index.ts >
+            Remove strict mode to stop page from rendering twice
 
 
-    10. Kakao Talk Auth
+        GithubConfirm >
+            ...imports...
+            export default function GithubConfirm() {
+            const { search } = useLocation();
+            const toast = useToast();
+            const QueryClient = useQueryClient();
+            const navigate = useNavigate();
+            const confirmLogin = async () => {
+                const params = new URLSearchParams(search);
+                const code = params.get("code");
+                if (code) {
+                    const status = await githubLogin(code);
+                    if (status == 200) {
+                        toast({
+                            status: "success",
+                            title: "Logged In",
+                            description: "Welcome back!",
+                            position: "bottom-right"
+                        });
+                        QueryClient.refetchQueries(['me']);
+                        navigate("/");
+                    } else {
+                        toast({
+                            status: "error",
+                            title: "Error",
+                            description: "Something went wrong!",
+                            position: "bottom-right"
+                        })
+                    }
+                }
+            }
 
+    9. Kakao Talk App - Trying with LINE LATER
+ 
+        PASS
 
-    11. Kakao Login
+    10. Kakao Talk Auth - Trying with LINE LATER
 
+        PASS
+
+    11. Kakao Login - Trying with LINE LATER
+
+        PASS
 
     12. Login Form
 
+        NOT RECOMMENDED
+            LoginModal > 
+                ...
+                const [username, onChangeUsername] = useState("");
+                const [password, onChangePassword] = useState("");
+                const onChange = (e: React.SyntheticEvent<HTMLInputElement>) => {
+                    const { name, value } = e.currentTarget;
+                    if (name === "username") {
+                        onChangeUsername(value)
+                        console.log(value);
+                    }
+                    else if (name === "password") {
+                        onChangePassword(value);
+                        console.log(value);
+                    }
+                }
+                const onSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
+                    e.preventDefault();
+                    console.log(username, password);
+                }
+                ...
+                <ModalBody as={"form"}>
+                    <VStack>
+                        <InputGroup>
+                            <InputLeftElement children={
+                                <Box color={"gray.500"}>
+                                    <FaUserNinja />
+                                </Box>} />
+                            <Input
+                                name="username"
+                                value={username}
+                                required
+                                onChange={onChange}
+                                placeholder='Username'
+                                variant={"filled"} />
+                        </InputGroup>
+                        <InputGroup>
+                            <InputLeftElement children={
+                                <Box color={"gray.500"}>
+                                    <FaLock />
+                                </Box>} />
+                            <Input
+                                name="password"
+                                value={password}
+                                type="password"
+                                required
+                                onChange={onChange}
+                                placeholder='Password'
+                                variant={"filled"} />
+                        </InputGroup>
+                    </VStack>
+                    <Button
+                        type='submit'
+                        onSubmit={onSubmit as any}
+                        colorScheme={"red"}
+                        w={"100%"}
+                        mt={4}
+                        mb={4}
+                    >
+                        Login
+                    </Button>
+                    <SocialLogin />
+                </ModalBody>
+
+            THIS IS HOW MUCH CODE JUST FOR USERNAME AND PASSWORD -
+            YOU WILL NEED TO WRITE CODE FOR BELOW FOR CREATING A USER
+                username, setusername
+                pass, set_unusable_password
+                email, setemail
+                passworderr, setpassworderr,
+                emailerr,setemailerr
+                ifelses for each of these on change
+            NOT RECOMMENDED 
+            RECOMMEND REACT HOOK FORM as it saves time
 
     13. React Hook Form
 
+        DELETED ABOVE (all code above return)
+        DELETED NAME, ONCHANGE and VALUE from inputs
+
+        npm i react-hook-form
+        import {useForm} from 'react-hook-form';
+
+        ...
+        interface ILoginForm {
+            username: string;
+            password: string;
+        }
+
+        function LoginModal({ isOpen, onClose }: LoginModalProps) {
+            const { register, handleSubmit, formState: { errors } } = useForm<ILoginForm>();
+            // watch, handleForm, formState
+            const onSubmit = (data: ILoginForm) => {
+                console.log(data);
+            }
+            return (
+                <Modal isOpen={isOpen} onClose={onClose}>
+                    <ModalOverlay />
+                    <ModalContent>
+                        <ModalHeader>Login</ModalHeader>
+                        <ModalCloseButton />
+                        <ModalBody as={"form"} onSubmit={handleSubmit(onSubmit)}>
+                            <VStack>
+                                <InputGroup>
+                                    <InputLeftElement children={
+                                        <Box color={"gray.500"}>
+                                            <FaUserNinja />
+                                        </Box>} />
+                                    <Input
+                                        isInvalid={Boolean(errors.password?.message)}
+                                        {...register("username", {
+                                            required: "Please provide a username",
+                                        })}
+                                        required
+                                        placeholder='Username'
+                                        variant={"filled"} />
+                                </InputGroup>
+                                <InputGroup>
+                                    <InputLeftElement children={
+                                        <Box color={"gray.500"}>
+                                            <FaLock />
+                                        </Box>} />
+                                    <Input
+                                        isInvalid={Boolean(errors.password?.message)}
+                                        {...register("password", {
+                                            required: "Please provide a password",
+                                        })}
+                                        required
+                                        type="password"
+                                        placeholder='Password'
+                                        variant={"filled"} />
+                                </InputGroup>
+                            </VStack>
+                            <Button
+                                type='submit'
+                                colorScheme={"red"}
+                                w={"100%"}
+                                mt={4}
+                                mb={4}
+                            >
+                                Login
+                            </Button>
+                            <SocialLogin />
+                        </ModalBody>
+
+                    </ModalContent>
+
+                </Modal>)
+        }
+
+        export default LoginModal
 
     14. useMutation
 
+        useQuery vs useMutation
+
+        api >
+            export interface IUsernameLoginVariables {
+                username: string;
+                password: string;
+            }
+
+            export interface IUsernameLoginSuccess {
+                ok: string;
+            }
+
+            export interface IUsernameLoginError {
+                error: string;
+            }
+
+            export const usernameLogin = ({ username, password }: IUsernameLoginVariables) => instance.post(
+                `/users/log-in`,
+                { username, password },
+                {
+                    headers: {
+                        "X-CSRFToken": Cookie.get("csrftoken") || "",
+                    },
+                }
+            ).then((res) => res.status);
+
+
+        LoginModal >
+            ...
+            function LoginModal({ isOpen, onClose }: LoginModalProps) {
+                const { register, handleSubmit, formState: { errors } } = useForm<ILoginForm>(); // Generics could optionally go here (IUSucc,Errr,Variab)
+                // watch, handleForm, formState
+                const toast = useToast();
+                const queryClient = useQueryClient();
+                const mutation = useMutation(usernameLogin, {
+                    onMutate: () => {
+                        console.log("mutation starting");
+                    },
+                    onSuccess: (data) => {
+                        console.log("mutation successful");
+                        toast({
+                            title: "Welcome back!",
+                            status: "success",
+                            position: "bottom-right",
+                        });
+                        onClose();
+                        queryClient.refetchQueries(["me"])
+                    },
+                    onError: (error) => {
+                        console.log("mutation failed");
+                        toast({
+                            title: "Failed",
+                            status: "error",
+                            position: "bottom-right",
+                        })
+                    }
+                });
+                const onSubmit = ({ username, password }: ILoginForm) => {
+                    mutation.mutate({ username, password });
+                }
+                return (
+            ...
+
+            ...
+            <Button
+                isLoading={mutation.isLoading}
+                type='submit'
+                colorScheme={"red"}
+                w={"100%"}
+                mt={4}
+                mb={4}
+            >
+                Login
+            </Button>
+            ...
 
     15. Recap & Code Challenge 
+
+        Header >
+            REFACTOR 
+
+            const toast = useToast();
+            const queryClient = useQueryClient();
+            const toastId = useRef<ToastId>();
+            const mutation = useMutation(logOut, {
+                onMutate: () => {
+                    toastId.current = toast({
+                        title: "Login out...",
+                        description: "Sad to see you go...",
+                        status: "loading",
+                        position: "bottom-right",
+                    });
+                },
+                onSuccess: () => {
+                    if (toastId.current) {
+                        queryClient.refetchQueries(["me"]);
+                        toast.update(toastId.current, {
+                            status: "success",
+                            title: "Logged Out",
+                            description: "You have successfully logged out",
+                        });
+                    }
+                },
+            });
+            const onLogOut = async () => {
+                mutation.mutate();
+            }
+    
+        Api >
+            export const usernameLogin = ({ username, password }: IUsernameLoginVariables) =>
+            instance.post(
+                `/users/log-in`,
+                { username, password },
+                {
+                    headers: {
+                        "X-CSRFToken": Cookie.get("csrftoken") || "",
+                    },
+                }
+            );
+
+        LoginModal >
+            function LoginModal({ isOpen, onClose }: LoginModalProps) {
+                const { register, handleSubmit, formState: { errors }, reset } = useForm<ILoginForm>(); // Generics could optionally go here (IUSucc,Errr,Variab)
+                // watch, handleForm, formState
+                const toast = useToast();
+                const queryClient = useQueryClient();
+                const mutation = useMutation(usernameLogin, {
+                    // onMutation - unused
+                    onSuccess: (data) => {
+                        console.log("mutation successful");
+                        toast({
+                            title: "Welcome back!",
+                            status: "success",
+                            position: "bottom-right",
+                        });
+                        onClose();
+                        reset();
+                        queryClient.refetchQueries(["me"])
+                    },
+                    onError: (error) => {
+                        console.log("mutation failed");
+                        toast({
+                            title: "Failed",
+                            status: "error",
+                            position: "bottom-right",
+                        })
+                    }
+                });
+                const onSubmit = ({ username, password }: ILoginForm) => {
+                    mutation.mutate({ username, password });
+                };
+
+        CHALLENGE = MAKE SIGN UP FORM           - AFTER
+        REFACTOR GH/LINE FORM TO USE USEMUTATION     - AFTER
+
 
 -------------------------------------------------------------------------
 
@@ -865,3 +1533,26 @@
     5. Conclusions
 
 -------------------------------------------------------------------------
+
+
+
+
+==========================================================================
+==========================================================================
+    9. Kakao Talk App - Trying with LINE LATER
+        https://developers.line.biz/en/reference/line-login/#oauth
+        https://api.line.me/oauth2/v2.1/token
+
+        curl -v -X POST https://api.line.me/oauth2/v2.1/token \
+        -H 'Content-Type: application/x-www-form-urlencoded' \
+        -d 'grant_type=authorization_code' \
+        -d 'code=1234567890abcde' \
+        --data-urlencode 'redirect_uri=https://example.com/auth?key=value' \
+        -d 'client_id=1234567890' \
+        -d 'client_secret=1234567890abcdefghij1234567890ab' \
+        -d 'code_verifier=wJKN8qz5t8SSI9lMFhBB6qwNkQBkuPZoCxzRhwLRUo1'
+
+    10. Kakao Talk Auth
+
+
+    11. Kakao Login
