@@ -42,7 +42,9 @@ function RoomDetail() {
                         <Skeleton
                             isLoaded={!isLoading} h="100%" w="100%"
                         >
-                            <Image src={data?.photos[index].file} w={"100%"} h={"100%"} objectFit={"cover"} />
+                            {data?.photos && data.photos.length > 0 ?
+                                (<Image src={data?.photos[index].file} w={"100%"} h={"100%"} objectFit={"cover"} />) :
+                                null}
 
                         </Skeleton>
                     </GridItem>)
@@ -58,9 +60,9 @@ function RoomDetail() {
                     </Skeleton>
                     <Skeleton isLoaded={!isLoading} h={"30px"}>
                         <HStack justifyContent={"flex-start"} w={"100%"} >
-                            <Text>{data?.toilets} toilet{data?.toilets == 1 ? "" : "s"}</Text>
+                            <Text>{data?.toilets} toilet{data?.toilets === 1 ? "" : "s"}</Text>
                             <Text>|</Text>
-                            <Text>{data?.rooms} room{data?.rooms == 1 ? "" : "s"}</Text>
+                            <Text>{data?.rooms} room{data?.rooms === 1 ? "" : "s"}</Text>
                         </HStack>
                     </Skeleton>
 

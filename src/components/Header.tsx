@@ -7,6 +7,7 @@ import useUser from '../lib/useUser';
 import { logOut } from '../api';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRef } from "react";
+import { Link } from 'react-router-dom';
 
 function Header() {
     const { userLoading, isLoggedIn, userData } = useUser();
@@ -59,7 +60,9 @@ function Header() {
                 md: "row",
             }}>
             <Box color={logoColor}>
-                <FaAirbnb size={48} />
+                <Link to="/">
+                    <FaAirbnb size={48} />
+                </Link>
             </Box>
             <HStack spacing={"2"}>
                 <AnimatePresence exitBeforeEnter initial={false}>
@@ -102,6 +105,11 @@ function Header() {
                                     <Avatar name={userData?.username} size={'md'} src={userData?.profile_photo} />
                                 </MenuButton>
                                 <MenuList>
+                                    {userData?.is_host ?
+                                        <Link to="/rooms/upload"><MenuItem>Upload Room</MenuItem></Link>
+                                        :
+                                        null
+                                    }
                                     <MenuItem onClick={onLogOut}>Logout</MenuItem>
                                 </MenuList>
                             </Menu>

@@ -1,9 +1,10 @@
 import { Text, Image, Box, Button, HStack, VStack, useColorModeValue, Spacer } from '@chakra-ui/react'
-import { FaRegHeart, FaStar } from 'react-icons/fa'
-import { Link } from 'react-router-dom';
+import { FaCamera, FaRegHeart, FaStar } from 'react-icons/fa'
+import { Link, useNavigate } from 'react-router-dom';
 
 interface IRoomProps {
     pk: number;
+    isOwner: boolean;
     name: string;
     imageURL: string;
     city: string;
@@ -12,8 +13,16 @@ interface IRoomProps {
     rating: number;
 }
 
-function Room({ pk, name, imageURL, rating, city, country, price }: IRoomProps) {
+function Room({ pk, name, imageURL, rating, city, country, price, isOwner }: IRoomProps) {
     const locationTextColor = useColorModeValue("gray.600", "gray.300");
+    const navigate = useNavigate();
+    const onCameraClick = (e: React.SyntheticEvent<HTMLButtonElement>) => {
+        e.preventDefault();
+        navigate(`/rooms/${pk}/photos`)
+    }
+    const onHeartClick = (e: React.SyntheticEvent<HTMLButtonElement>) => {
+        e.preventDefault();
+    }
     return (
         <Link to={`/rooms/${pk}`}>
             <VStack
@@ -36,8 +45,10 @@ function Room({ pk, name, imageURL, rating, city, country, price }: IRoomProps) 
                         top={2}
                         right={-1}
                         color={"white"}
-                        variant="unstyled">
-                        <FaRegHeart size={20} />
+                        variant="unstyled"
+                        onClick={isOwner ? onCameraClick : onHeartClick}
+                    >
+                        {isOwner ? <FaCamera size={20} /> : <FaRegHeart size={20} />}
                     </Button>
                 </Box>
                 <Box w={"100%"}>

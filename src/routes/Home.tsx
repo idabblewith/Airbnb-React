@@ -40,10 +40,12 @@ function Home() {
                     <RoomSkeleton />
                 </>
             ) : null}
-            {data?.map(room =>
-                <Room
+            {data?.map(room => {
+                console.log(room);
+                return <Room
                     key={room.pk}
                     pk={room.pk}
+                    isOwner={room.is_owner}
                     name={room.name}
                     price={room.price}
                     rating={room.rating}
@@ -57,6 +59,7 @@ function Home() {
                                 room.photos[0].file
                     }
                 />
+            }
             )}
 
 

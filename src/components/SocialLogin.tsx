@@ -3,6 +3,11 @@ import React from 'react'
 import { FaComment, FaGithub } from 'react-icons/fa'
 
 function SocialLogin() {
+    const gh_params = {
+        client_id: "b99860fd6028f1114333",
+        scope: "read:user,user:email"
+    }
+    const GHparams = new URLSearchParams(gh_params).toString();
     return (
         <Box mb={4}>
             <HStack my={8}>
@@ -16,7 +21,7 @@ function SocialLogin() {
             </HStack>
             <VStack>
                 <Button
-                    href='https://github.com/login/oauth/authorize?client_id=b99860fd6028f1114333&scope=read:user,user:email'
+                    href={`https://github.com/login/oauth/authorize?${GHparams}`}
                     w={"100%"}
                     as="a"
                     leftIcon={<FaGithub />}
