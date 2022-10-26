@@ -4,6 +4,7 @@ import Room from '../components/Room'
 import RoomSkeleton from '../components/RoomSkeleton'
 import { useQuery } from '@tanstack/react-query';
 import { IRoomList } from "../types";
+import { Helmet } from 'react-helmet';
 
 function Home() {
     const { isLoading, data } = useQuery<IRoomList[]>(["rooms"], getRooms);
@@ -26,6 +27,9 @@ function Home() {
             }}
             mt={10}
         >
+            <Helmet>
+                <title>{"Airbnb Clone | Home"}</title>
+            </Helmet>
             {isLoading ? (
                 <>
                     <RoomSkeleton />

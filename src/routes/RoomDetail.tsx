@@ -1,15 +1,31 @@
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { getRoomDetail, getRoomReviews } from "../api";
+import { checkBooking, getRoomDetail, getRoomReviews } from "../api";
 import { IReview, IRoomDetail } from "../types";
-import { Box, Grid, Heading, Skeleton, Image, GridItem, VStack, HStack, Text, Avatar, SkeletonCircle, Container } from "@chakra-ui/react";
+import { Box, Grid, Heading, Skeleton, Image, GridItem, VStack, HStack, Text, Avatar, SkeletonCircle, Container, Button } from "@chakra-ui/react";
 import { FaStar } from "react-icons/fa";
+import Calendar from "react-calendar";
+import "react-calendar/dist/Calendar.css";
+import { useEffect, useState } from "react";
+import { Helmet } from 'react-helmet';
+import "../calendar.css";
 
 function RoomDetail() {
     const { roomPk } = useParams();
     const { isLoading, data } = useQuery<IRoomDetail>([`room`, roomPk], getRoomDetail)
-    console.log(data);
-    const { data: reviewsData, isLoading: isReviewsLoading } = useQuery<IReview[]>([`rooms`, roomPk, `reviews`], getRoomReviews);
+    const { data: reviewsData } = useQuery<IReview[]>(
+        [`rooms`, roomPk, `reviews`],
+        getRoomReviews
+    );
+    const [dates, setDates] = useState<Date[]>();
+    const { data: checkBookingData, isLoading: isCheckingBooking } = useQuery(
+        ["check", roomPk, dates],
+        checkBooking,
+        {
+            cacheTime: 0, //freshest data
+            enabled: dates !== undefined, //prevent fetching when dates aren't set
+        });
+
     return (
         <Box
             px={{
@@ -18,6 +34,9 @@ function RoomDetail() {
             }}
             mt={10}
         >
+            <Helmet>
+                <title>{data ? data.name : "Loading..."}</title>
+            </Helmet>
             <Skeleton
                 isLoaded={!isLoading}
                 w={"25%"} h={"43px"}
@@ -51,67 +70,95 @@ function RoomDetail() {
                 )
                 }
             </Grid>
-            <HStack mt={10} w={"40%"} justifyContent={"space-between"}>
-                <VStack alignItems={"flex-start"}>
-                    <Skeleton isLoaded={!isLoading} h={"30px"}>
-                        <Heading fontSize={'2xl'}>
-                            House hosted by {data?.owner.username}
-                        </Heading>
-                    </Skeleton>
-                    <Skeleton isLoaded={!isLoading} h={"30px"}>
-                        <HStack justifyContent={"flex-start"} w={"100%"} >
-                            <Text>{data?.toilets} toilet{data?.toilets === 1 ? "" : "s"}</Text>
-                            <Text>|</Text>
-                            <Text>{data?.rooms} room{data?.rooms === 1 ? "" : "s"}</Text>
-                        </HStack>
-                    </Skeleton>
-
-                </VStack>
-                <SkeletonCircle isLoaded={!isLoading} h="95px" w="95px">
-                    <Avatar size={'xl'}
-                        name={data?.owner.username}
-                        src={data?.owner.profile_photo} />
-                </SkeletonCircle>
-
-            </HStack>
-            <Box mt={10}>
-                <Heading fontSize={'2xl'} mb={5}>
-                    <Skeleton w={'40%'} isLoaded={!isLoading}>
-                        <HStack>
-                            <FaStar />
-                            <Text>{data?.rating}</Text>
-                            <Text fontSize={18}>|</Text>
-                            <Text>{reviewsData?.length} review{reviewsData?.length === 1 ? "" : "s"}</Text>
-                        </HStack>
-                    </Skeleton>
-                </Heading>
-                <Container mx={"none"} maxW="container.lg" mt={35}>
-                    <Grid templateColumns={"1fr 1fr"} gap={10}>
-                        {reviewsData?.map((review, index) => (
-                            <VStack key={index} alignItems={"flex-start"} spacing={0}>
-                                <HStack >
-                                    <Avatar name={review.user.name}
-                                        src={review.user.profile_photo}
-                                        size={'md'}
-                                    />
-                                    <VStack alignItems={"flex-start"}>
-                                        <Heading fontSize={'md'}>{review.user.username}</Heading>
-                                        <HStack spacing={1}>
-                                            <FaStar size={'12px'} />
-                                            <Text>{review.rating}</Text>
-                                        </HStack>
-                                    </VStack>
+            <Grid gap={20} templateColumns={"2fr 1fr"} maxW="container.lg">
+                <Box>
+                    <HStack justifyContent={"space-between"} mt={10}>
+                        <VStack alignItems={"flex-start"}>
+                            <Skeleton isLoaded={!isLoading} height={"30px"}>
+                                <Heading fontSize={"2xl"}>
+                                    House hosted by {data?.owner.username}
+                                </Heading>
+                            </Skeleton>
+                            <Skeleton isLoaded={!isLoading} height={"30px"}>
+                                <HStack justifyContent={"flex-start"} w="100%">
+                                    <Text>
+                                        {data?.toilets} toliet{data?.toilets === 1 ? "" : "s"}
+                                    </Text>
+                                    <Text>∙</Text>
+                                    <Text>
+                                        {data?.rooms} room{data?.rooms === 1 ? "" : "s"}
+                                    </Text>
                                 </HStack>
-                                <Text>{review.payload}</Text>
+                            </Skeleton>
+                        </VStack>
+                        <Avatar
+                            name={data?.owner.name}
+                            size={"xl"}
+                            src={data?.owner.profile_photo}
+                        />
+                    </HStack>
+                    <Box mt={10}>
+                        <Heading mb={5} fontSize={"2xl"}>
+                            <HStack>
+                                <FaStar /> <Text>{data?.rating}</Text>
+                                <Text>∙</Text>
+                                <Text>
+                                    {reviewsData?.length} review
+                                    {reviewsData?.length === 1 ? "" : "s"}
+                                </Text>
+                            </HStack>
+                        </Heading>
+                        <Container mt={16} maxW="container.lg" marginX="none">
+                            <Grid gap={10} templateColumns={"1fr 1fr"}>
+                                {reviewsData?.map((review, index) => (
+                                    <VStack alignItems={"flex-start"} key={index}>
+                                        <HStack>
+                                            <Avatar
+                                                name={review.user.name}
+                                                src={review.user.profile_photo}
+                                                size="md"
+                                            />
+                                            <VStack spacing={0} alignItems={"flex-start"}>
+                                                <Heading fontSize={"md"}>{review.user.name}</Heading>
+                                                <HStack spacing={1}>
+                                                    <FaStar size="12px" />
+                                                    <Text>{review.rating}</Text>
+                                                </HStack>
+                                            </VStack>
+                                        </HStack>
+                                        <Text>{review.payload}</Text>
+                                    </VStack>
+                                ))}
+                            </Grid>
+                        </Container>
+                    </Box>
+                </Box>
+                <Box pt={10}>
+                    <Calendar
+                        onChange={setDates}
+                        prev2Label={null}
+                        next2Label={null}
+                        minDetail="month"
+                        minDate={new Date()}
+                        maxDate={new Date(Date.now() + 60 * 60 * 24 * 7 * 4 * 6 * 1000)}
+                        selectRange
+                    />
+                    <Button
+                        disabled={!checkBookingData?.ok}
+                        isLoading={isCheckingBooking}
+                        my={5}
+                        w="100%"
+                        colorScheme={"red"}
+                    >
+                        Make booking
+                    </Button>
+                    {!isCheckingBooking && !checkBookingData?.ok ? (
+                        <Text color="red.500">Can't book on those dates, sorry.</Text>
+                    ) : null}
 
-                            </VStack>
-                        ))}
-                    </Grid>
-                </Container>
-
-            </Box>
+                </Box>
+            </Grid>
         </Box>
-    )
+    );
 }
-
 export default RoomDetail

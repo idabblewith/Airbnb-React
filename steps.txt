@@ -2114,21 +2114,349 @@
 -------------------------------------------------------------------------
 
 22. CALENDAR
-
-
     1. Calendar Component
 
+        npm i react-calendar
+        npm i --save-dev @types/react-calendar
+
+        calendar
+            minDate - prevents user from setting a date before now
+            minDate={new Date()}
+
+            maxDate - prevents user from going forward too far in calendar 
+            maxDate={new Date(Date.now() + 60 * 60 * 24 * 7 * 4 * 6 * 1000)} // 60 secs, mins, hours, days, weeks, months * milisecs
+
+            minDetail - sets the default level of detail of the calendar 
+            minDetail="month"
+
+            Removes extra buttons when jumping 
+            prev2Label={null}
+            next2Label={null}
+
+        Room Detail >
+            Check differences 
 
     2. Booking Dates
 
+    Django.rooms.urls >
+
+        bookings.serializer.CreateRoomSerializer >
+            ...
+            def validate(self, data):
+                room = self.context.get("room")
+                if data["check_out"] <= data["check_in"]:
+                    raise serializers.ValidationError(
+                        "Check In date should be before Check Out date"
+                    )
+
+                if Booking.objects.filter(
+                    room=room,
+                    check_in__lte=data["check_out"],
+                    check_out__gte=data["check_in"],
+                ).exists():
+                    raise serializers.ValidationError(
+                        "A booking already exists between or on those dates"
+                    )
+                return data
+
+        rooms.views >
+            class RoomBookingCheck(APIView):
+                def go(self, pk):
+                    try:
+                        return Room.objects.get(pk=pk)
+                    except Room.DoesNotExist:
+                        raise NotFound
+
+                def get(self, req, pk):
+                    room = self.go(pk)
+                    check_out = req.query_params.get("check_out")
+                    check_in = req.query_params.get("check_in")
+
+                    exists = Booking.objects.filter(
+                        room=room,
+                        check_in__lte=check_out,
+                        check_out__gte=check_in,
+                    ).exists()
+                    if exists:
+                        return Response(
+                            {
+                                "ok": False,
+                            }
+                        )
+                    return Response(
+                        {
+                            "ok": True,
+                        }
+                    )
+
+
+        RoomDetail >
+            Check differences 
+            ...
+                const { roomPk } = useParams();
+                const { isLoading, data } = useQuery<IRoomDetail>([`room`, roomPk], getRoomDetail)
+                const { data: reviewsData } = useQuery<IReview[]>(
+                    [`rooms`, roomPk, `reviews`],
+                    getRoomReviews
+                );
+                const [dates, setDates] = useState<Date[]>();
+                useEffect(() => {
+                    if (dates) {
+                        const [firstDate, secondDate] = dates;
+                        const [checkIn] = firstDate.toJSON().split("T");
+                        const [checkOut] = secondDate.toJSON().split("T");
+                        console.log(checkIn, checkOut);
+                    }
+                }, [dates]);
 
     3. Checking Dates
 
+        RoomDetail >
+            function RoomDetail() {
+            const { roomPk } = useParams();
+            const { isLoading, data } = useQuery<IRoomDetail>([`room`, roomPk], getRoomDetail)
+            const { data: reviewsData } = useQuery<IReview[]>(
+                [`rooms`, roomPk, `reviews`],
+                getRoomReviews
+            );
+            const [dates, setDates] = useState<Date[]>();
+            const { data: checkBookingData, isLoading: isCheckingBooking } = useQuery(
+                ["check", roomPk, dates],
+                checkBooking,
+                {
+                    cacheTime: 0,
+                    enabled: dates !== undefined,
+                });
+
+            ...
+
+            <Calendar
+                onChange={setDates}
+                prev2Label={null}
+                next2Label={null}
+                minDetail="month"
+                minDate={new Date()}
+                maxDate={new Date(Date.now() + 60 * 60 * 24 * 7 * 4 * 6 * 1000)}
+                selectRange
+            />
+            <Button
+                disabled={!checkBookingData?.ok}
+                isLoading={isCheckingBooking}
+                my={5}
+                w="100%"
+                colorScheme={"red"}
+            >
+                Make booking
+            </Button>
 
     4. Timezones
 
+        lib.utils.ts >
+            export const formatDate = (date: Date) =>
+            `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
 
-    5. Code Challenge
+        api >
+            ...
+            import { formatDate } from "./lib/utils";
+            ...
+            export const checkBooking = ({
+                queryKey,
+            }: QueryFunctionContext<CheckBookingQueryKey>) => {
+                const [_, roomPk, dates] = queryKey;
+                if (dates) {
+                    const [firstDate, secondDate] = dates;
+                    const checkIn = formatDate(firstDate);
+                    const checkOut = formatDate(secondDate);
+                    return instance
+                        .get(
+                            `rooms/${roomPk}/bookings/check?check_in=${checkIn}&check_out=${checkOut}`
+                        )
+                        .then((res) => res.data);
+                }
+            };
+
+        npm i react-helmet
+        npm i --save-dev @types/react-helmet
+
+        RoomDetail >
+            import {Helmet} from 'react-helmet';
+            import "../calendar.css";
+
+
+            ...
+
+            return (
+                <Box
+                    px={{
+                        sm: 10,
+                        lg: 40,
+                    }}
+                    mt={10}
+                >
+                    <Helmet>
+                        <title>{data ? data.name : "Loading..."}</title>
+                    </Helmet>
+                    ...
+
+        src.calendar.css >
+            .react-calendar {
+                width: 100%;
+                background: transparent;
+                border: none;
+                box-shadow: var(--chakra-shadows-lg);
+                padding: var(--chakra-sizes-5);
+                border-radius: 20px;
+                font-family: Arial, Helvetica, sans-serif;
+                line-height: 1.125em;
+            }
+
+            .react-calendar--doubleView {
+                width: 700px;
+            }
+
+            .react-calendar--doubleView .react-calendar__viewContainer {
+                display: flex;
+                margin: -0.5em;
+            }
+
+            .react-calendar--doubleView .react-calendar__viewContainer>* {
+                width: 50%;
+                margin: 0.5em;
+            }
+
+            .react-calendar,
+            .react-calendar *,
+            .react-calendar *:before,
+            .react-calendar *:after {
+                -moz-box-sizing: border-box;
+                -webkit-box-sizing: border-box;
+                box-sizing: border-box;
+            }
+
+            .react-calendar button {
+                margin: 0;
+                border: 0;
+                outline: none;
+            }
+
+            .react-calendar button:enabled:hover {
+                cursor: pointer;
+            }
+
+            .react-calendar__navigation {
+                height: 44px;
+                margin-bottom: 1em;
+            }
+
+            .react-calendar__navigation button {
+                min-width: 44px;
+                background: none;
+            }
+
+            .react-calendar__navigation button:enabled:hover,
+            .react-calendar__navigation button:enabled:focus {
+                background-color: #e6e6e6;
+            }
+
+            .react-calendar__navigation button[disabled] {
+                background-color: transparent
+            }
+
+            .react-calendar__month-view__weekdays {
+                text-align: center;
+                text-transform: uppercase;
+                font-weight: bold;
+                font-size: 0.75em;
+            }
+
+            .react-calendar__month-view__weekdays__weekday {
+                padding: 0.5em;
+            }
+
+            .react-calendar__month-view__weekNumbers {
+                font-weight: bold;
+            }
+
+            .react-calendar__month-view__weekNumbers .react-calendar__tile {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.75em;
+                padding: calc(0.75em / 0.75) calc(0.5em / 0.75);
+            }
+
+            .react-calendar__month-view__days__day--weekend {
+                color: #d10000;
+            }
+
+            .react-calendar__month-view__days__day--neighboringMonth {
+                color: #757575;
+            }
+
+            .react-calendar__year-view .react-calendar__tile,
+            .react-calendar__decade-view .react-calendar__tile,
+            .react-calendar__century-view .react-calendar__tile {
+                padding: 2em 0.5em;
+            }
+
+            .react-calendar__tile {
+                max-width: 100%;
+                text-align: center;
+                padding: 0.75em 0.5em;
+                background: none;
+            }
+
+            .react-calendar__tile:disabled {
+                opacity: 0.4;
+                pointer-events: none;
+                background-color: transparent;
+            }
+
+            .react-calendar__tile:enabled:hover,
+            .react-calendar__tile:enabled:focus {
+                background-color: #e6e6e6;
+            }
+
+            .react-calendar__tile--now {
+                background: #ffff76;
+            }
+
+            .react-calendar__tile--now:enabled:hover,
+            .react-calendar__tile--now:enabled:focus {
+                background: #ffffa9;
+            }
+
+            .react-calendar__tile--hasActive {
+                background: #76baff;
+            }
+
+            .react-calendar__tile--hasActive:enabled:hover,
+            .react-calendar__tile--hasActive:enabled:focus {
+                background: #a9d4ff;
+            }
+
+            .react-calendar__tile--active {
+                background: #006edc;
+                color: white;
+            }
+
+            .react-calendar__tile--active:enabled:hover,
+            .react-calendar__tile--active:enabled:focus {
+                background: #1087ff;
+            }
+
+            .react-calendar--selectRange .react-calendar__tile--hover {
+                background-color: #e6e6e6;
+            }
+
+    5. Code Challenge - AFTER COMPLETION
+        a) EDIT BUTTON & FORM FOR ROOMS (NAMES ETC)
+            using chakra and already created upload room page as template
+        b) BOOKING POST (ACTUALLY MAKE THE BOOKING)
+            using restapi endpoint already created @ rooms.views.RoomBookings.post
+                - create mutation to create booking
+                - build pages for users and owner to look at bookings
+
 
 -------------------------------------------------------------------------
 
@@ -2172,3 +2500,14 @@
 
 
     11. Kakao Login
+    
+==========================================================================
+==========================================================================
+
+CALENDAR  5. Code Challenge - AFTER COMPLETION
+        a) EDIT BUTTON & FORM FOR ROOMS (NAMES ETC)
+            using chakra and already created upload room page as template
+        b) BOOKING POST (ACTUALLY MAKE THE BOOKING)
+            using restapi endpoint already created @ rooms.views.RoomBookings.post
+                - create mutation to create booking
+                - build pages for users and owner to look at bookings
